@@ -1,62 +1,142 @@
 using UnityEngine;
-using UnityEngine.UI; // Required for working with UI elements like Text
-using UnityEngine.SceneManagement; // Required for scene management functions
+using UnityEngine.UI;
 
 public class LogicScript : MonoBehaviour
 {
-    // Public variables for player score, score display, and game over screen
-    public int playerScore = 0; // Tracks the player's score
-    public Text scoreText; // Reference to the UI Text component that displays the score
-    public GameObject gameOverScreen; // Reference to the game over screen UI
-    private bool _isGameOver = false; // Flag to track game state
-    
-    // Method to increase the player's score, can be called in the editor using the Context Menu
-    [ContextMenu("Increase Score")] // Allows you to call this method from the Unity editor for testing
+    public int playerScore = 0;
+    public Text scoreText;
+    public GameObject startScreen;
+    public GameObject gameOverScreen;
+    public BirdScript bird;
+    public Transform pipeContainer; // Transform allows iteration over child objects
+    public PipeSpawnScript pipeSpawner; // Reference to PipeSpawnScript
+
+    public bool isGameStarted = false;
+    private bool _isGameOver = false;
+
+    private void Start()
+    {
+        ShowStartScreen();
+        Time.timeScale = 0f;
+    }
+
+    private void Update()
+    {
+        if (!isGameStarted && Input.GetKeyDown(KeyCode.Space))
+        {
+            StartGame();
+        }
+    }
+
     public void AddScore(int scoreToAdd)
     {
-        // Prevent score from increasing if Game Over has already been triggered
-        if (_isGameOver)
-        {
-            Debug.Log("Score update blocked: Game Over already triggered.");
-            return;
-        }
-        playerScore += scoreToAdd; // Add the specified amount to the player's score
-        UpdateScoreText(); // Update the UI to reflect the new score
+        if (_isGameOver) return;
+
+        playerScore += scoreToAdd;
+        UpdateScoreText();
     }
 
-    // Method to restart the current game/scene
-    public void RestartGame()
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name); // Reload the current scene
-    }
-
-    // Method to trigger the game over sequence
     public void GameOver()
     {
-        if (_isGameOver) return; // Prevent multiple game over triggers
-        
-        if (gameOverScreen is not null)
+        if (_isGameOver) return;
+
+        _isGameOver = true;
+        Time.timeScale = 0f;
+
+        if (gameOverScreen != null)
         {
-            gameOverScreen.SetActive(true); // Activate the game over screen
-            _isGameOver = true; // Set game over flag
+            gameOverScreen.SetActive(true);
         }
-        else
+
+        if (pipeSpawner != null)
         {
-            Debug.LogError("GameOverScreen is not assigned in the inspector!");
+            pipeSpawner.StopSpawning(); // Stop pipe spawning on Game Over
         }
     }
 
-    // Private helper method to update the score text UI
-    private void UpdateScoreText()
+    public void RestartGame()
     {
-        if (scoreText is not null)
+        _isGameOver = false;
+        playerScore = 0;
+        UpdateScoreText();
+        isGameStarted = false;
+
+        if (gameOverScreen != null)
         {
-            scoreText.text = playerScore.ToString(); // Convert the score to a string and update the UI
+            gameOverScreen.SetActive(false); // Hide Game Over screen
+        }
+
+        ResetGame();
+        ShowStartScreen(); // Show the start screen again
+    }
+    
+    private void StartGame()
+    {
+        isGameStarted = true;
+        Time.timeScale = 1f;
+
+        if (startScreen != null)
+        {
+            startScreen.SetActive(false);
+        }
+
+        if (bird != null)
+        {
+            bird.StartBird();
+        }
+
+        if (pipeSpawner != null)
+        {
+            pipeSpawner.StartSpawning(); // Start spawning pipes on game start
+            //Debug.Log("Calling StartSpawning() from LogicScript."); //  Confirm call
+        }
+    }
+    
+    private void ShowStartScreen()
+    {
+        Time.timeScale = 0f; // Pause the game
+
+        if (startScreen != null)
+        {
+            startScreen.SetActive(true); // Ensure start screen is visible
+        }
+    }
+
+    private void ResetGame()
+    {
+        if (bird != null)
+        {
+            bird.ResetBird();
+        }
+
+        if (pipeContainer != null)
+        {
+            //Debug.Log("Pipes before reset: " + pipeContainer.childCount);
+
+            // Only destroy the children (pipes), not the container itself
+            for (int i = pipeContainer.childCount - 1; i >= 0; i--)
+            {
+                Transform pipe = pipeContainer.GetChild(i);
+                //Debug.Log("Destroying pipe: " + pipe.name);
+                Destroy(pipe.gameObject);
+            }
         }
         else
         {
-            Debug.LogError("ScoreText is not assigned in the inspector!");
+            //Debug.LogWarning("PipeContainer reference is missing!");
+        }
+
+        if (pipeSpawner != null)
+        {
+            pipeSpawner.ResetSpawner();
+        }
+    }
+
+    private void UpdateScoreText()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = playerScore.ToString();
         }
     }
 }
-

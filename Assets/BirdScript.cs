@@ -2,47 +2,68 @@ using UnityEngine;
 
 public class BirdScript : MonoBehaviour
 {
-    // Public variables for Rigidbody2D, flap strength, game logic reference, and alive status
-    public Rigidbody2D myRigidBody; // The Rigidbody2D component for handling physics of the bird
-    public float flapStrength = 5f; // The upward force applied when the bird flaps
-    public LogicScript logic; // Reference to the game's LogicScript for handling game over
-    public bool birdIsAlive = true; // Tracks whether the bird is alive or not
+    public Rigidbody2D myRigidBody;
+    public float flapStrength = 5f;
+    public bool birdIsAlive = true;
+    public LogicScript logic;
 
-   private void Start()
+    private Vector3 initialPosition; // Stores the bird's starting position
+
+    private void Awake() 
     {
-        // Ensure that the LogicScript is properly assigned, otherwise log an error
-        if (logic is null)
+        initialPosition = transform.position; // Capture the position as soon as the object is loaded
+        //Debug.Log("Captured initial position in Awake: " + initialPosition);
+    }
+
+    private void Start()
+    {
+        if (logic == null)
         {
-            GameObject logicObject = GameObject.FindGameObjectWithTag("Logic");
-            if (logicObject is not null)
-            {
-                logic = logicObject.GetComponent<LogicScript>();
-            }
-            else
-            {
-                Debug.LogError("LogicScript not found! Ensure it is tagged as 'Logic'.");
-            }
+            logic = GameObject.FindGameObjectWithTag("Logic").GetComponent<LogicScript>();
         }
-        // Ensure the Rigidbody2D is assigned
-        if (myRigidBody is null)
-        {
-            Debug.LogError("Rigidbody2D is not assigned to BirdScript!");
-        }
+
+        myRigidBody.simulated = true; // Ensure physics is enabled
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && birdIsAlive)
+        if (birdIsAlive && logic.isGameStarted && Input.GetKeyDown(KeyCode.Space))
         {
-            myRigidBody.linearVelocity = Vector2.up * flapStrength; // Apply upward force in Update.
+            Flap();
         }
     }
 
+    private void Flap()
+    {
+        myRigidBody.linearVelocity = Vector2.zero; 
+        myRigidBody.AddForce(Vector2.up * flapStrength, ForceMode2D.Impulse);
+    }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        // Trigger game over logic on collision with another object
-        logic.GameOver();
-        birdIsAlive = false; // Prevent further actions by the bird
+        if (birdIsAlive)
+        {
+            logic.GameOver();
+            birdIsAlive = false;
+        }
     }
+
+    public void StartBird()
+    {
+        myRigidBody.simulated = true;
+        birdIsAlive = true;
+    }
+
+    public void ResetBird()
+    {
+        //Debug.Log("Resetting bird to initial position: " + initialPosition);
+
+        transform.position = initialPosition;        // Reset position
+        transform.rotation = Quaternion.identity;    // Reset rotation to upright
+        myRigidBody.linearVelocity = Vector2.zero;         
+        myRigidBody.angularVelocity = 0f;            // Clear angular velocity
+        myRigidBody.simulated = true;                
+        birdIsAlive = true;
+    }
+
 }
